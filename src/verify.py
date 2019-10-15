@@ -2,7 +2,6 @@ from src.mhl import pass_context
 from src.util import logger
 from src.mhl.hash_folder import HashListFolderManager
 from src.mhl.hash_list import HashListCreator, HashListReader
-from src.mhl.chain import Chain, ChainGeneration
 import click
 import os
 import getpass
@@ -33,8 +32,7 @@ def verify(ctx, **kwargs):
         ctx.generation_number = folder_manager.earliest_ascmhl_generation_number()
 
     if not ctx.skip_chain_verification:
-        chain = Chain(folder_manager.ascmhl_chainfile_path())
-        number_ascmhl_failures = chain.verify_all()
+        number_ascmhl_failures = folder_manager.verify_all_generations()
         if number_ascmhl_failures > 0:
             # TODO: Patrick: remove info log once _create_README script properly reads stderr output.
             #  this logs to both info and error because the scenarios are not properly setup to read stderr output.

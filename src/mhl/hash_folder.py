@@ -1,6 +1,6 @@
 from src.util.datetime import datetime_now_filename_string
+from src.mhl.hash import create_filehash
 from src.util import logger
-from src.mhl.chain import Chain, ChainGeneration
 import os
 import re
 import click
@@ -17,8 +17,10 @@ class HashListFolderManager:
 
     ascmhl_folder_name = "asc-mhl"
     ascmhl_file_extension = ".ascmhl"
+    ascmhl_hash_file_extension = ".hash"
+    ascmhl_signature_file_extension = ".signature"
     ascmhl_chainfile_name = "chain.txt"
-    hashformat_for_ascmhl_files = 'MD5'
+    hashformat_for_ascmhl_files = 'SHA256'
 
     def __init__(self, folderpath):
         # TODO: we shouldn't be setting verbosity on these classes. reference context for value when needed
@@ -27,6 +29,9 @@ class HashListFolderManager:
         if not folderpath[len(folderpath):1] == os.path.sep:
             folderpath = folderpath + os.path.sep
         self.folderpath = folderpath
+
+        self.generation_hashes = []
+        self.read_generation_hashes_and_signatures()
 
     def ascmhl_folder_path(self):
         """absolute path of the asc-mhl folder"""
@@ -151,6 +156,20 @@ class HashListFolderManager:
         if filename is not None:
             return self.path_for_ascmhl_file(filename)
 
+    def path_for_generation_hash_file(self, generation):
+        if generation is not None:
+            return os.path.join(self.folderpath, HashListFolderManager.ascmhl_folder_name,
+                                generation.hash_filename())
+        else:
+            return None
+
+    def path_for_generation_signature_file(self, generation):
+        if generation is not None:
+            return os.path.join(self.folderpath, HashListFolderManager.ascmhl_folder_name,
+                                generation.signature_filename())
+        else:
+            return None
+
     def write_ascmhl(self, xml_string, signature_identifier=None, private_key_filepath=None):
         """writes a given XML string into a new MHL file"""
         filepath = self.path_for_new_ascmhl_file()
@@ -160,19 +179,19 @@ class HashListFolderManager:
                 # FIXME: check if file could be created
                 file.write(xml_string.encode('utf8'))
 
-            chain = Chain(self.ascmhl_chainfile_path())
             if private_key_filepath is None:
-                generation = ChainGeneration.with_new_ascmhl_file(self.latest_ascmhl_generation_number(),
-                                                                  filepath,
-                                                                  HashListFolderManager.hashformat_for_ascmhl_files)
+                generation = HashListGeneration.\
+                    with_new_ascmhl_file(self.latest_ascmhl_generation_number(),
+                                         filepath,
+                                         HashListFolderManager.hashformat_for_ascmhl_files)
             else:
-                generation = ChainGeneration.\
+                generation = HashListGeneration.\
                     with_new_ascmhl_file_and_signature(self.latest_ascmhl_generation_number(),
                                                        filepath,
                                                        HashListFolderManager.hashformat_for_ascmhl_files,
                                                        signature_identifier, private_key_filepath)
 
-            chain.append_new_generation_to_file(generation)
+            self.add_generation_file(generation)
 
             return filepath
 
@@ -182,3 +201,279 @@ class HashListFolderManager:
             return False
         else:
             return filepath.startswith(self.ascmhl_folder_path())
+
+
+    def add_generation_file(self, generation):
+        """ creates a generation file in the asc-mhl folder
+        """
+
+        # TODO sanity checks
+        # - if generation is already part of self.generations
+        # - if generation number is sequential
+
+        # immediately write to file
+        if generation.is_signed():
+            logger.info(
+                f'creating generation hash file for \"{generation.ascmhl_filename}\" with signature for '
+                f'{generation.signature_identifier} to chain file')
+        else:
+            logger.info(
+                f'creating generation hash file for \"{generation.ascmhl_filename}\"')
+
+        with open(self.path_for_generation_hash_file(generation), 'w+') as file:
+            file.write(generation.line_for_hash_file() + "\n")
+
+        # FIXME: check if file could be created
+
+        # …and store here
+        # FIXME: only if successfully written to file
+        generation.chain = self
+        self.generation_hashes.append(generation)
+
+        # FIXME: return success
+
+    def verify_all_generations(self):
+        """verifies asc-mhl files of all listed generations in chain file
+
+        result value:
+        0 - everything ok
+        >0 - number of verification failures
+        """
+
+        # TODO sanity checks
+        # - if generation numbers are sequential and complete
+        # - check if all files exist
+
+        if self.generation_hashes is not None and self.generation_hashes.__len__() > 0:
+            logger.info(f'verifying all ascmhl files in {self.ascmhl_folder_path()}')
+
+        number_of_failures = 0
+        for generation in self.generation_hashes:
+            result = generation.verify_hash()
+            if result is False:
+                number_of_failures = number_of_failures + 1
+
+        return number_of_failures
+
+    def read_generation_hashes_and_signatures(self):
+        # go through asc-mhl folder
+
+        # for each asc-mhl file read .hash and .signature file
+
+        # fill generation and append to self.generation_hashes
+
+
+
+
+class HashListGeneration:
+    """class for representing one generation with the hash of the asc-mhl file
+
+    member variables:
+    generation_number -- integer, -1 means invalid
+    ascmhl_filename --
+    hashformat --
+    hash_string --
+    signature_identifier -- opt, used to find public key
+    signature -- opt, base64 encoded
+    chain -- needed for absolute path resolution
+    """
+
+    def __init__(self):
+
+        # line string examples:
+        # 0001 A002R2EC_2019-10-08_100916_0001.ascmhl SHA1: 9e9302b3d7572868859376f0e5802b87bab3199e
+        # 0001 A002R2EC_2019-10-08_100916_0001.ascmhl SHA1: 9e9302b3d7572868859376f0e5802b87bab3199e bob@example.com enE9miWg6gKQQpYYzYzNVdrOrE58jnNbnqBW/J44g9jniMej7tjqhwezWd7PbfE5T+qcNx0VEetVSNiMllgGPLNcI1lw/Io/rS1NgVO13sCHd4BOPXlux2sUBuZWQliP9WFuuomtDulZyQaaSc1AOQ1YjKPuGIDoLlwvS7KXMMg=
+
+        self.generation_number = -1  # integer, -1 means invalid
+        self.ascmhl_filename = None
+        self.hashformat = None
+        self.hash_string = None
+        self.signature_identifier = None  # opt, used to find public key
+        self.signature = None  # opt, base64 encoded
+        self.chain = None;
+
+    @classmethod
+    def with_line_in_chainfile(cls, line_string):
+        """ creates a Generatzion object from a line int the chain file
+        """
+
+        # TODO split by whitespace
+        parts = line_string.split(None)
+
+        if parts is not None and parts.__len__() < 4:
+            logger.error("cannot read line \"{line}\"")
+            return None
+
+        generation = cls()
+
+        generation.generation_number = int(parts[0])
+        generation.ascmhl_filename = parts[1]
+        generation.hashformat = (parts[2])[:-1]
+        generation.hash_string = parts[3]
+
+        if parts.__len__() == 6:
+            generation.signature_identifier = parts[4]
+            generation.signature = parts[5]
+
+        # TODO sanity checks
+
+        return generation
+
+    @classmethod
+    def with_new_ascmhl_file(cls, generation_number, filepath, hashformat):
+        """ hashes ascmhl file and creates new, filled Generation object
+        """
+
+        # TODO check if ascmhl file exists
+
+        generation = cls()
+
+        generation.generation_number = generation_number
+        generation.ascmhl_filename = os.path.basename(os.path.normpath(filepath))
+        generation.hashformat = hashformat
+
+        # TODO somehow pass in xxattr flag from context ?
+        generation.hash_string = create_filehash(filepath, hashformat)
+
+        return generation
+
+    @classmethod
+    def with_new_ascmhl_file_and_signature(cls, generation_number, filepath, hashformat,
+                                           signature_identifier, private_key_filepath):
+        """ hashes ascmhl file, signs it, and creates new, filled Generation object
+        """
+
+        generation = ChainGeneration.with_new_ascmhl_file(generation_number, filepath, hashformat)
+
+        signature_string = sign_hash(generation.hash_string, private_key_filepath)
+
+        generation.signature_identifier = signature_identifier
+        generation.signature = signature_string
+
+        return generation
+
+    def hash_filename(self):
+        return f'{self.ascmhl_filename}{HashListFolderManager.ascmhl_hash_file_extension}'
+
+    def signature_filename(self):
+        return f'{self.ascmhl_filename}{HashListFolderManager.ascmhl_signature_file_extension}'
+
+    def is_signed(self):
+        return self.signature_identifier is not None and self.signature is not None
+
+    def line_for_hash_file(self):
+        """creates the content of the hash file for a generation / ASC-MHL file
+        """
+        result_string = f'{self.hashformat}({self.ascmhl_filename})= {self.hash_string}\n'
+
+        if self.is_signed():
+            result_string = result_string + " " + self.signature_identifier + " " + self.signature
+
+        return result_string
+
+    def line_for_signature_file(self):
+        """creates the content of the signature file for a generation / ASC-MHL file
+        """
+        result_string = f'{self.hashformat}({self.ascmhl_filename})= {self.hash_string}\n'
+
+        if self.is_signed():
+            result_string = result_string + "\n" + self.signature_identifier + "\n" + self.signature
+
+        return result_string
+
+    def verify(self, public_key_filepath=None):
+        """verifies hash and signature (if available) of generation
+
+        paramters:
+        public_key_filepath - path to pem file with signer's public key (needs to be found via self.signature_identifier)
+
+        result value:
+        True - everything ok
+        False - verification of hash or signature failed
+        """
+
+        result = self.verify_hash()
+
+        if result is False:
+            return False
+
+        if self.is_signed():
+            if public_key_filepath is None:
+                logger.error("public key needed for verifying signature of generation {self.generation_number}")
+                result = False
+            else:
+                result = self.verify_signature(public_key_filepath)
+
+        return result
+
+    def verify_hash(self):
+        """verifies the asc-mhl file of a generation against available hash
+
+        result value:
+        True - everything ok
+        False - verification failed
+        """
+
+        ascmhl_file_path = os.path.join(self.chain.ascmhl_folder_path(), self.ascmhl_filename)
+
+        # TODO somehow pass in xxattr flag from context ?
+        current_filehash = create_filehash(ascmhl_file_path , self.hashformat)
+
+        if current_filehash != self.hash_string:
+            logger.error(f'hash mismatch for {self.ascmhl_filename} '
+                         f'old {self.hashformat}: {self.hash_string}, '
+                         f'new {self.hashformat}: {current_filehash}')
+            self.log_chain_generation(True, 'failed')
+            return False
+        else:
+            self.log_chain_generation(False, 'verified')
+            return True
+
+        # digest again in order to compare hashes
+        # $ openssl dgst -sha1 self.ascmhl_filename
+
+        # return result of hash comparison:
+        # return (digest_hash == self.hash_string)
+
+    def verify_signature(self, public_key_filepath):
+        """verifies the signature against  available hash
+
+        paramters:
+        public_key_filepath - path to pem file with signer's public key (needs to be found via self.signature_identifier)
+
+        result value:
+        True - everything ok
+        False - verification of signature failed
+        """
+
+        signature_hash = check_signature(self.signature, public_key_filepath)
+
+        # return result of hash comparison:
+        if signature_hash != self.hash_string:
+            logger.error(f'signature verification failed for {self.ascmhl_filename} with '
+                         f'public key at {public_key_filepath}')
+            self.log_chain_generation(True, 'sig failed')
+            return False
+        else:
+            self.log_chain_generation(False, 'sig ok')
+            return True
+
+
+    def log_chain_generation(self, failed, action):
+        indicator = " "
+        if failed:
+            indicator = "!"
+
+        if self.is_signed():
+            logger.info("{0} {1}: {2} {3}: {4} (signed by {5})".format(indicator,
+                                                                       self.hashformat.rjust(6),
+                                                                       self.hash_string.ljust(32),
+                                                                       action.ljust(10),
+                                                                       self.ascmhl_filename,
+                                                                       self.signature_identifier))
+        else:
+            logger.info("{0} {1}: {2} {3}: {4}".format(indicator,
+                                                       self.hashformat.rjust(6),
+                                                       self.hash_string.ljust(32),
+                                                       action.ljust(10),
+                                                       self.ascmhl_filename))

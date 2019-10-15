@@ -18,6 +18,8 @@ def create_filehash(filepath, hashformat, write_xattr = False):
         hash_string = md5(filepath)
     elif hashformat == 'SHA1':
         hash_string = sha1(filepath)
+    elif hashformat == 'SHA256':
+        hash_string = sha256(filepath)
     elif hashformat == 'xxhash':
         hash_string = xxhash64(filepath)
     elif hashformat == 'C4':
@@ -76,6 +78,8 @@ def md5(file_path):
 def sha1(file_path):
     return generate_checksum(hashlib.sha1, file_path)
 
+def sha256(file_path):
+    return generate_checksum(hashlib.sha256, file_path)
 
 def xxhash64(file_path):
     return generate_checksum(xxhash.xxh64, file_path)

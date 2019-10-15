@@ -1,7 +1,6 @@
 from src.mhl import pass_context
 from src.util import logger
 from src.mhl.hash_folder import HashListFolderManager
-from src.mhl.chain import Chain
 import click
 
 
@@ -20,8 +19,7 @@ def checksignature(ctx, root_path, generation_number, chainsignaturepublickey, v
 
     ctx.verbose = verbose
     folder_manager = HashListFolderManager(root_path)
-    chain = Chain(folder_manager.ascmhl_chainfile_path())
-    generation = chain.generation_with_generation_number(generation_number)
+    generation = folder_manager.generation_with_generation_number(generation_number)
 
     result = generation.verify_signature(chainsignaturepublickey)
 
