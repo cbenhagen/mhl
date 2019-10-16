@@ -1,6 +1,8 @@
 from src.util.datetime import datetime_now_filename_string
 from src.mhl.hash import create_filehash
 from src.util import logger
+from src.util import matches_prefixes
+from src.util.constants import filename_ignore_prefixes
 import os
 import re
 import click
@@ -20,7 +22,7 @@ class HashListFolderManager:
     ascmhl_hash_file_extension = ".hash"
     ascmhl_signature_file_extension = ".signature"
     ascmhl_chainfile_name = "chain.txt"
-    hashformat_for_ascmhl_files = 'SHA256'
+    hashformat_for_ascmhl_files = 'xxhash'
 
     def __init__(self, folderpath):
         # TODO: we shouldn't be setting verbosity on these classes. reference context for value when needed
@@ -256,11 +258,32 @@ class HashListFolderManager:
         return number_of_failures
 
     def read_generation_hashes_and_signatures(self):
-        # go through asc-mhl folder
 
-        # for each asc-mhl file read .hash and .signature file
+        for root, directories, filenames in os.walk(self.ascmhl_folder_path()):
+            for filename in filenames:
 
-        # fill generation and append to self.generation_hashes
+                if matches_prefixes(filename, filename_ignore_prefixes) is False:
+                    parts = re.findall(r'(.*)_(.+)_(.+)_(\d+)\.ascmhl(.*)', filename)
+                    if parts.__len__() == 1 and (parts[0].__len__() == 4 or parts[0].__len__() == 5):
+                        generation_number = int(parts[0][3])
+
+                    else:
+                        logger.error(f'name of file {filename} doesnt conform to naming convention')
+
+                    if filename.endswith(HashListFolderManager.ascmhl_hash_file_extension):
+                        # A002R2EC_2019-06-21_082301_0005.ascmhl.hash
+                        hash_file_path = os.path.join(os.path.normpath(self.ascmhl_folder_path()), filename)
+                        generation = HashListGeneration.with_hash_file(hash_file_path, generation_number)
+                        if generation is not None:
+                            self.generation_hashes.append(generation)
+
+                   # if filename.endswith(HashListFolderManager.ascmhl_hash_file_extension):
+                        # A002R2EC_2019-06-21_082301_0005.ascmhl.signature
+
+
+                    # for each asc-mhl file read .hash and .signature file
+
+                    # fill generation and append to self.generation_hashes
 
 
 
@@ -286,6 +309,7 @@ class HashListGeneration:
 
         self.generation_number = -1  # integer, -1 means invalid
         self.ascmhl_filename = None
+        self.ascmhl_folder_path = None
         self.hashformat = None
         self.hash_string = None
         self.signature_identifier = None  # opt, used to find public key
@@ -293,27 +317,27 @@ class HashListGeneration:
         self.chain = None;
 
     @classmethod
-    def with_line_in_chainfile(cls, line_string):
-        """ creates a Generatzion object from a line int the chain file
+    def with_hash_file(cls, hash_file_path, generation_number):
+        """ creates a HashListGeneration object from a .hash file
         """
+        generation = None
 
-        # TODO split by whitespace
-        parts = line_string.split(None)
+        with open(hash_file_path, 'r') as hash_file:
+            line = hash_file.read().replace('\n', '')
 
-        if parts is not None and parts.__len__() < 4:
-            logger.error("cannot read line \"{line}\"")
-            return None
+            parts = re.findall(r'(.+)\((.+)\)= (.+)', line)
+            if parts.__len__() == 1 and parts[0].__len__() == 3:
+                generation = cls()
 
-        generation = cls()
+                generation.generation_number = generation_number
+                generation.ascmhl_filename = parts[0][1]
+                generation.hashformat = parts[0][0]
+                generation.hash_string = parts[0][2]
 
-        generation.generation_number = int(parts[0])
-        generation.ascmhl_filename = parts[1]
-        generation.hashformat = (parts[2])[:-1]
-        generation.hash_string = parts[3]
+                generation.ascmhl_folder_path = os.path.dirname(os.path.normpath(hash_file_path))
 
-        if parts.__len__() == 6:
-            generation.signature_identifier = parts[4]
-            generation.signature = parts[5]
+            else:
+                logger.error("cannot read line \"{line}\"")
 
         # TODO sanity checks
 
@@ -343,7 +367,7 @@ class HashListGeneration:
         """ hashes ascmhl file, signs it, and creates new, filled Generation object
         """
 
-        generation = ChainGeneration.with_new_ascmhl_file(generation_number, filepath, hashformat)
+        generation = HashListGeneration.with_new_ascmhl_file(generation_number, filepath, hashformat)
 
         signature_string = sign_hash(generation.hash_string, private_key_filepath)
 
@@ -414,7 +438,7 @@ class HashListGeneration:
         False - verification failed
         """
 
-        ascmhl_file_path = os.path.join(self.chain.ascmhl_folder_path(), self.ascmhl_filename)
+        ascmhl_file_path = os.path.join(self.ascmhl_folder_path, self.ascmhl_filename)
 
         # TODO somehow pass in xxattr flag from context ?
         current_filehash = create_filehash(ascmhl_file_path , self.hashformat)

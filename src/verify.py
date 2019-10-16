@@ -17,8 +17,8 @@ import getpass
 @click.option('--simulate', '-s', default=False, is_flag=True, help="Simulate only, don't write new ascmhl file")
 @click.option('--directory_hashes', '-d', default=False, is_flag=True, help="Disregard folder hashes and only compute file hashes")
 @click.option('--skipchainverification', '-sc', default=False, is_flag=True, help="Skip chain verification")
-@click.option('--chainsignatureidentifier', '-csi', default=None, help="Identifier for signer")
-@click.option('--chainsignatureprivatekey', '-csp', default=None, help="Path to private key (PEM) file for signing")
+#@click.option('--chainsignatureidentifier', '-csi', default=None, help="Identifier for signer")
+#@click.option('--chainsignatureprivatekey', '-csp', default=None, help="Path to private key (PEM) file for signing")
 @click.option('--write_xattr', '-wx', default=False, is_flag=True, help="Write hashes as xattr to file system")
 @click.option('--verbose', '-v', default=False, is_flag=True, help="Verbose output")
 @pass_context

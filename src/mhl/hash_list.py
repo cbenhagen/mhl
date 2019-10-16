@@ -4,6 +4,7 @@ from src.mhl.hash_entry import MediaHash, HashEntry
 from src.mhl.hash_folder import HashListFolderManager
 from src.util import matches_prefixes
 from src.util import logger
+from src.util.constants import filename_ignore_prefixes
 from lxml import objectify, etree, sax
 import lxml
 import datetime
@@ -16,7 +17,6 @@ import click
 # TODO: these should be defined dynamically. check the command invoked and the version programmatically so this doesn't have to be updated.
 ascmhl_toolname_string = 'ascmhl-verify'
 ascmhl_toolversion_string = '0.0.3'
-
 
 class MediaHashList:
     """class for representing a list of media hashes, e.g. from an MHL file,
@@ -128,12 +128,14 @@ class HashListCreator:
     verbose -- bool value, enables/disables logging
     simulate -- bool value, if true doesn't write the MHL file
     info -- user info (name, email, ..) for MHL header
-    filenameIgnorePrefixes -- ignore all files that start with these prefixes
+    filename_ignore_prefixes -- ignore all files that start with these prefixes
     create_directory_hashes -- bool value, if true also computes compound hashes for directories
     write_xattr -- bool value, also lets create_filehash write the created hash to the filesystem
     """
 
     supported_hashformats = {'xxhash', 'MD5', 'SHA1', 'C4'}  # is also decreasing priority list for verification
+
+    foldernameIgnores = ['asc-mhl']
 
     def __init__(self, root_path, info):
         """initialize the HashListCreator, set default values
@@ -152,8 +154,7 @@ class HashListCreator:
         self.verbose = ctx.verbose  # TODO: we should not be setting verbose a million places...
         self.simulate = False
         self.info = info
-        self.filenameIgnorePrefixes = ['Icon', '.DS_Store']
-        self.foldernameIgnores = ['asc-mhl']
+
         self._h = lxml.sax.ElementTreeContentHandler()
         self.create_directory_hashes = False
         self.write_xattr = False
@@ -290,7 +291,7 @@ class HashListCreator:
             file_media_list = MediaHashList(root)
             for filename in sorted(filenames):
                 filepath = os.path.join(root, filename)
-                if matches_prefixes(filename, self.filenameIgnorePrefixes) is False:
+                if matches_prefixes(filename, filename_ignore_prefixes) is False:
                     previous_media_hash = None
 
                     relative_filepath = os.path.relpath(filepath, start=self.rootPath)
