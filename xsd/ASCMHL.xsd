@@ -29,7 +29,7 @@
         <sequence>
             <element name="creationdate" type="dateTime" maxOccurs="1" minOccurs="1"/>
             <element name="hostname" type="string" maxOccurs="1" minOccurs="1"/>
-            <element name="root" type="ascmhl:HashType"/>
+            <element name="root" type="ascmhl:DirectoryHashType"/>
             <element name="tool" type="ascmhl:ToolType" maxOccurs="1" minOccurs="1"/>
             <element maxOccurs="unbounded" minOccurs="0" name="author" type="ascmhl:AuthorType"/>
             <element minOccurs="0" name="location" type="string"/>
@@ -82,9 +82,10 @@
         </sequence>
     </complexType>
     <complexType name="HashesType">
-        <sequence>
-            <element name="hash" type="ascmhl:HashType" maxOccurs="unbounded" minOccurs="1"/>
-        </sequence>
+        <choice minOccurs="1" maxOccurs="unbounded">
+            <element name="hash" type="ascmhl:HashType" />
+            <element name="directoryhash" type="ascmhl:DirectoryHashType" />
+        </choice>
     </complexType>
     <complexType name="HashType">
         <sequence>
@@ -99,26 +100,55 @@
                     </simpleContent>
                 </complexType>
             </element>
-            <choice maxOccurs="unbounded">
-                <element name="md5" type="ascmhl:HashFormatType" minOccurs="0"/>
-                <element name="sha1" type="ascmhl:HashFormatType" minOccurs="0"/>
-                <element name="c4" type="ascmhl:HashFormatType" minOccurs="0"/>
-                <element name="xxh32" type="ascmhl:HashFormatType" maxOccurs="1" minOccurs="0"/>
-                <element name="xxh64" type="ascmhl:HashFormatType" maxOccurs="1" minOccurs="0"/>
-                <element name="xxh3" type="ascmhl:HashFormatType" maxOccurs="1" minOccurs="0"/>
+            <choice minOccurs="1" maxOccurs="unbounded">
+                <element name="md5" type="ascmhl:HashFormatType" />
+                <element name="sha1" type="ascmhl:HashFormatType" />
+                <element name="c4" type="ascmhl:HashFormatType" />
+                <element name="xxh32" type="ascmhl:HashFormatType" />
+                <element name="xxh64" type="ascmhl:HashFormatType" />
+                <element name="xxh3_64" type="ascmhl:HashFormatType" />
+                <element name="xxh3_128" type="ascmhl:HashFormatType" />
+                <!-- fixme: doesn't prevent multiple of the same HashFormatType, not possible with XSD 1.0 (works with assert and counting each element in XSD 1.1) -->
             </choice>
             <element minOccurs="0" name="metadata" type="ascmhl:MetadataType"/>
         </sequence>
-        <attribute name="directory" type="boolean"/>
+    </complexType>
+    <complexType name="DirectoryHashType">
+        <sequence>
+            <element name="path">
+                <complexType>
+                    <simpleContent>
+                        <extension base="string">
+                            <attribute name="creationdate" type="dateTime"/>
+                            <attribute name="lastmodificationdate" type="dateTime"/>
+                        </extension>
+                    </simpleContent>
+                </complexType>
+            </element>
+            <element name="content" type="ascmhl:DirectoryHashFormatContainerType" minOccurs="0" maxOccurs="1" />
+            <element name="structure" type="ascmhl:DirectoryHashFormatContainerType" minOccurs="0" maxOccurs="1" />
+            <element name="metadata" type="ascmhl:MetadataType" minOccurs="0" />
+        </sequence>
     </complexType>
     <complexType name="HashFormatType">
         <simpleContent>
             <extension base="string">
                 <attribute name="action" type="ascmhl:ActionAttributeType"/>
                 <attribute name="hashdate" type="dateTime"/>
-                <attribute name="structure" type="string"/>
             </extension>
         </simpleContent>
+    </complexType>
+    <complexType name="DirectoryHashFormatContainerType">
+        <choice minOccurs="1" maxOccurs="unbounded">
+            <element name="md5" type="ascmhl:HashFormatType" />
+            <element name="sha1" type="ascmhl:HashFormatType" />
+            <element name="c4" type="ascmhl:HashFormatType" />
+            <element name="xxh32" type="ascmhl:HashFormatType" />
+            <element name="xxh64" type="ascmhl:HashFormatType" />
+            <element name="xxh3_64" type="ascmhl:HashFormatType" />
+            <element name="xxh3_128" type="ascmhl:HashFormatType" />
+            <!-- fixme: doesn't prevent multiple of the same HashFormatType, not possible with XSD 1.0 (works with assert and counting each element in XSD 1.1) -->
+        </choice>
     </complexType>
     <complexType name="ReferencesType">
         <sequence>
