@@ -104,47 +104,89 @@ class C4HashContext:
         return data
 
 
-class DirectoryHashContext:
+class DirectoryContentHashContextEntry:
+
+    def __init__(self, path: str, hash_string: str):
+        self.path = path
+        self.hash_string = hash_string
+
+
+class DirectoryContentHashContext:
 
     def __init__(self, hash_format: str):
         self.hash_format = hash_format
-        self.content_hash_strings = []
-        self.structure_hash_strings = []
-        self.directory_paths = []
-        self.file_paths = []
+        self.content_hash_entries = []
 
-    def append_file_hash(self, path: str, content_hash_string: str):
-        self.content_hash_strings.append(content_hash_string)
-        self.file_paths.append(path)
+    """ content hashing is for file content hashes only """
+    def append_content_hash(self, path: str, content_hash_string: str):
+        assert content_hash_string is not None and content_hash_string != ""
+        entry = DirectoryContentHashContextEntry(path, content_hash_string)
+        self.content_hash_entries.append(entry)
 
-    def append_directory_hashes(self, path: str, content_hash_string: str, structure_hash_string: str):
-        self.content_hash_strings.append(content_hash_string)
-        self.structure_hash_strings.append(structure_hash_string)
-        self.directory_paths.append(path)
+    def all_hash_strings(self):
+        return self.hash_strings_with_path_prefix("")
 
-    def final_content_hash_str(self):
-        # simply create a list-digest of all content digests
-        element_list = self.content_hash_strings
-        content_hash = digest_for_digest_list(element_list, self.hash_format)
-        return content_hash
+    def hash_strings_with_path_prefix(self, path_prefix: str):
+        element_list = []
+        for entry in self.content_hash_entries:
+            if entry.path.startswith(path_prefix):
+                element_list.append(entry.hash_string)
+        return element_list
 
-    def final_structure_hash_str(self):
-        # we need to mix file names and recursive directory structure here...
-        # .. so start with the file names themselves and hash those individually ..
-        file_names = []
-        for path in self.file_paths:
-            file_names.append(os.path.basename(os.path.normpath(path)))
-        element_list = digest_list_for_list(file_names, self.hash_format)
-        # .. and then add digests of concatenated directory names and structure digest
-        assert(len(self.directory_paths) == len(self.structure_hash_strings))
-        for i in range(len(self.directory_paths)):
-            directory_name = os.path.basename(os.path.normpath(self.directory_paths[i]))
-            element_data = directory_name.encode('utf8') + \
-                           digest_data_for_digest_string(self.structure_hash_strings[i], self.hash_format)
-            element_list.append(digest_for_data(element_data, self.hash_format))
-        # at the end make a list-digest of all the collected and created digests
-        structure_hash = digest_for_digest_list(element_list, self.hash_format)
-        return structure_hash
+    def final_content_hash(self):
+        return self.final_content_hash_for_directory_prefix("")
+
+    def final_content_hash_for_directory_prefix(self, path_prefix: str):
+        if path_prefix is None:
+            return None
+        element_list = self.hash_strings_with_path_prefix(path_prefix)
+        result_content_hash = digest_for_digest_list(element_list, self.hash_format)
+        return result_content_hash
+
+
+class DirectoryStructureHashContextEntry:
+
+    def __init__(self, path: str, name_hash_string: str, structure_hash_string: str, is_directory: bool):
+        self.path = path
+        self.name_hash_string = name_hash_string
+        self.structure_hash_string = structure_hash_string
+        self.is_directory = is_directory
+
+class DirectoryStructureHashContext:
+
+    def __init__(self, hash_format: str):
+        self.hash_format = hash_format
+        self.structure_hash_entries = []
+
+    """ structure hashing is for file names and sub-directories names and sub-directory-structure """
+    def append_filename(self, path: str):
+        assert path is not None and path != ""
+        filename_hash_string = digest_for_string(path, self.hash_format)
+        entry = DirectoryStructureHashContextEntry(path, filename_hash_string, None, False)
+        self.structure_hash_entries.append(entry)
+
+    def append_subfolder_and_hash(self, path: str, subfolder_structure_hash_string: str):
+        assert path is not None and path != ""
+        subfolder_name_hash_string = digest_for_string(path, self.hash_format)
+        assert subfolder_structure_hash_string is not None and subfolder_structure_hash_string != ""
+        entry = DirectoryStructureHashContextEntry(path, subfolder_name_hash_string, subfolder_structure_hash_string, True)
+        self.structure_hash_entries.append(entry)
+
+    def all_hash_strings(self):
+        element_list = []
+        for entry in self.structure_hash_entries:
+            if entry.is_directory:
+                element_list.append(entry.name_hash_string)
+                element_list.append(entry.structure_hash_string)
+            else:
+                element_list.append(entry.name_hash_string)
+        return element_list
+
+    def final_structure_hash(self):
+        element_list = self.all_hash_strings()
+        result_content_hash = digest_for_digest_list(element_list, self.hash_format)
+        return result_content_hash
+
 
 def digest_for_list(input_list, hash_format: str):
     if len(input_list) == 0:
