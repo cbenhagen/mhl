@@ -12,7 +12,7 @@ Sealing folder at path: /travel_01/A002R2EC ...
   created original hash for     Clips/A002C007_141024_R2EC.mov  xxh64: 7680e5f98f4a80fd
   calculated directory hash for Clips  xxh64: 6d43a82e7a5d40f6 (content), a27e08b77ae22c78 (structure)
   created original hash for     Sidecar.txt  xxh64: 3ab5a4166b9bde44
-  calculated root hash  xxh64: 7e423206834bf81a (content), 574ab2d2afc981cd (structure)
+  calculated root hash  xxh64: 835b96dd5943137c (content), 1d7f88e72b9265e2 (structure)
 Created new generation ascmhl/0001_A002R2EC_2020-01-16_091500.mhl
 
 
@@ -29,7 +29,7 @@ Sealing folder at path: /file_server/A002R2EC ...
   verified                      Clips/A002C007_141024_R2EC.mov  OK
   calculated directory hash for Clips  xxh64: 6d43a82e7a5d40f6 (content), a27e08b77ae22c78 (structure)
   verified                      Sidecar.txt  OK
-  calculated root hash  xxh64: 7e423206834bf81a (content), 574ab2d2afc981cd (structure)
+  calculated root hash  xxh64: 835b96dd5943137c (content), 1d7f88e72b9265e2 (structure)
 Created new generation ascmhl/0002_A002R2EC_2020-01-17_143000.mhl
 
 

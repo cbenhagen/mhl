@@ -5,7 +5,7 @@
     <hostname>myHost.local</hostname>
     <root directory="true">
       <path lastmodificationdate="2020-01-15T13:30:00+00:00">/file_server/Reels/A003R2EC</path>
-      <xxh64 structure="0729474d03751da0">f6c455e7941fe0f3</xxh64>
+      <xxh64 structure="bba0c1ed81c01966">f6c455e7941fe0f3</xxh64>
     </root>
     <tool version="0.2 alpha">ascmhl.py</tool>
     <process>in-place</process>

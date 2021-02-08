@@ -5,7 +5,7 @@
     <hostname>myHost.local</hostname>
     <root directory="true">
       <path lastmodificationdate="2020-01-15T13:00:00+00:00">/file_server/A002R2EC</path>
-      <md5 structure="b2ae676728fea69eb9f826defee34d07">ef2c1c34ebac7d493ffb0e79efaa0a1d</md5>
+      <md5 structure="d3401d8652709b7ce6b2a6345316ebd1">0031bac9e53cddc9317a4d454b5443b8</md5>
     </root>
     <tool version="0.2 alpha">ascmhl.py</tool>
     <process>in-place</process>

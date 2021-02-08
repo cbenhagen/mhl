@@ -5,7 +5,7 @@
     <hostname>myHost.local</hostname>
     <root directory="true">
       <path lastmodificationdate="2020-01-16T09:15:00+00:00">/file_server/Reels</path>
-      <xxh64 structure="e6546d6cea0092e2">3b7af44c2476dcd4</xxh64>
+      <xxh64 structure="a9233877d37bbaf2">2b2628ed9ad9ef23</xxh64>
     </root>
     <tool version="0.2 alpha">ascmhl.py</tool>
     <process>in-place</process>
@@ -18,11 +18,11 @@
   <hashes>
     <hash directory="true">
       <path lastmodificationdate="2020-01-15T13:00:00+00:00">A002R2EC</path>
-      <xxh64 structure="574ab2d2afc981cd">7e423206834bf81a</xxh64>
+      <xxh64 structure="1d7f88e72b9265e2">835b96dd5943137c</xxh64>
     </hash>
     <hash directory="true">
       <path lastmodificationdate="2020-01-15T13:30:00+00:00">A003R2EC</path>
-      <xxh64 structure="0729474d03751da0">f6c455e7941fe0f3</xxh64>
+      <xxh64 structure="bba0c1ed81c01966">f6c455e7941fe0f3</xxh64>
     </hash>
     <hash>
       <path size="48" lastmodificationdate="2020-01-17T14:30:00+00:00">Summary.txt</path>
@@ -32,11 +32,11 @@
   <references>
     <hashlistreference>
       <path>A002R2EC/ascmhl/0002_A002R2EC_2020-01-17_143000.mhl</path>
-      <c4>c42TQvoPvKvL9Vz2bZrQqdJwDYjzwTSopRP58b1cKTaq15RHGWBDRrjsiixVKMbryHxDLsRTHrgFPxUz9zkMBFK6Nd</c4>
+      <c4>c41SYvggdUpQcuViX5VvFspBcUWbcMgy68jVfTpAiSu78MgSWEzdxZzMi9zAS94XkvsbgYGyvaquKh8fH7Hvvpjtyh</c4>
     </hashlistreference>
     <hashlistreference>
       <path>A003R2EC/ascmhl/0002_A003R2EC_2020-01-17_143000.mhl</path>
-      <c4>c422RRnrBh9oQqRMS3fe4PLWpGPaZw7sxa68NPhFeExd9JcErTZui4g5Jz2XrH4qzFJSafbmfzkLCffXxosDPodk6c</c4>
+      <c4>c45DGkpGSWn3ALoM6R8rzqULMpowChFT488WMSW1uD8jFcRoYaAJVVu9m14Wq2yiGXyTrEX5iuppM9Ur2UucmpfDt3</c4>
     </hashlistreference>
   </references>
 </hashlist>
