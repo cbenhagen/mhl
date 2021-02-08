@@ -21,7 +21,7 @@ from . import utils
 from .ignore import MHLIgnoreSpec
 from .__version__ import ascmhl_supported_hashformats, ascmhl_folder_name, ascmhl_tool_name, ascmhl_tool_version
 from .generator import MHLGenerationCreationSession
-from .hasher import create_filehash, DirectoryHashContext
+from .hasher import create_filehash, DirectoryContentHashContext, DirectoryStructureHashContext
 from .hashlist import MHLCreatorInfo, MHLTool, MHLProcess
 from .history import MHLHistory
 from .traverse import post_order_lexicographic
@@ -91,40 +91,37 @@ def create_for_folder_subcommand(root_path, verbose, hash_format, no_directory_h
     session = MHLGenerationCreationSession(existing_history, ignore_spec)
 
     num_failed_verifications = 0
-    # store the directory hashes of sub folders so we can use it when calculating the hash of the parent folder
-    dir_content_hash_mappings = {}
+    dir_content_hash_context = DirectoryContentHashContext(hash_format)
+    # store the structure directory hashes of sub folders so we can use it when calculating the hash of the parent folder
     dir_structure_hash_mappings = {}
     for folder_path, children in post_order_lexicographic(root_path, session.ignore_spec.get_path_spec()):
         # generate directory hashes
-        dir_hash_context = None
-        if not no_directory_hashes:
-            dir_hash_context = DirectoryHashContext(hash_format)
+        dir_structure_hash_context = DirectoryStructureHashContext(hash_format)
+        if no_directory_hashes:
+            dir_structure_hash_context = None
         for item_name, is_dir in children:
             file_path = os.path.join(folder_path, item_name)
             not_found_paths.discard(file_path)
+            relative_path = existing_history.get_relative_file_path(file_path)
             if is_dir:
-                if not dir_hash_context:
-                    continue
-                if dir_hash_context:
-                    dir_hash_context.append_directory_hashes(file_path,
-                                                             dir_content_hash_mappings.pop(file_path),
-                                                             dir_structure_hash_mappings.pop(file_path))
+                if not no_directory_hashes:
+                    dir_structure_hash_context.append_subfolder_and_hash(item_name, dir_structure_hash_mappings.pop(file_path))
             else:
                 hash_string, success = seal_file_path(existing_history, file_path, hash_format, session)
                 if not success:
                     num_failed_verifications += 1
                 if not no_directory_hashes:
-                    dir_hash_context.append_file_hash(file_path, hash_string)
+                    dir_content_hash_context.append_content_hash(relative_path, hash_string)
+                    dir_structure_hash_context.append_filename(item_name)
         dir_content_hash = None
         dir_structure_hash = None
-        if dir_hash_context:
-            dir_content_hash = dir_hash_context.final_content_hash_str()
-            dir_structure_hash = dir_hash_context.final_structure_hash_str()
-            dir_content_hash_mappings[folder_path] = dir_content_hash
+        if dir_structure_hash_context:
+            relative_path = existing_history.get_relative_file_path(folder_path)
+            dir_content_hash = dir_content_hash_context.final_content_hash_for_directory_prefix(relative_path)
+            dir_structure_hash = dir_structure_hash_context.final_structure_hash()
             dir_structure_hash_mappings[folder_path] = dir_structure_hash
         modification_date = datetime.datetime.fromtimestamp(os.path.getmtime(folder_path))
         session.append_directory_hashes(folder_path, modification_date, hash_format, dir_content_hash, dir_structure_hash)
-
 
     commit_session(session)
 
@@ -330,54 +327,52 @@ def verify_directory_hash_subcommand(root_path, verbose, hash_format, ignore_lis
     session = MHLGenerationCreationSession(existing_history)
 
     num_failed_verifications = 0
+    dir_content_hash_context = DirectoryContentHashContext(hash_format)
     # store the directory hashes of sub folders so we can use it when calculating the hash of the parent folder
-    dir_content_hash_mappings = {}
     dir_structure_hash_mappings = {}
     for folder_path, children in post_order_lexicographic(root_path, ignore_spec.get_path_spec()):
         # generate directory hashes
-        dir_hash_context = None
-        dir_hash_context = DirectoryHashContext(hash_format)
+        dir_structure_hash_context = DirectoryStructureHashContext(hash_format)
         for item_name, is_dir in children:
             file_path = os.path.join(folder_path, item_name)
+            relative_path = existing_history.get_relative_file_path(file_path)
             if is_dir:
                 file_path = os.path.join(folder_path, item_name)
-                relative_path = existing_history.get_relative_file_path(file_path)
-                history, history_relative_path = existing_history.find_history_for_path(relative_path)
-                # check if there are directory hashes in the generations
-                directory_hash_entries = history.find_directory_hash_entries_for_path(history_relative_path)
-
-                content_hash = dir_content_hash_mappings.pop(file_path)
-                structure_hash = dir_structure_hash_mappings.pop(file_path)
-                dir_hash_context.append_directory_hashes(file_path, content_hash, structure_hash)
-
-                num_successful_verifications = 0
-                found_hash_format = False
-                for directory_hash_entry in directory_hash_entries:
-                    if directory_hash_entry.hash_format != hash_format:
-                        continue
-                    found_hash_format = True
-                    num_current_successful_verifications = _compare_and_log_directory_hashes(relative_path, directory_hash_entry, content_hash, structure_hash)
-                    if num_current_successful_verifications == 2:
-                        num_successful_verifications += 1
-                    if num_current_successful_verifications == 1:
-                        num_failed_verifications += 1
-
+                dir_structure_hash_context.append_subfolder_and_hash(item_name,
+                                                                     dir_structure_hash_mappings.pop(file_path))
                 if not found_hash_format:
                     logger.error(
                         f'ERROR: verification of folder {relative_path}: No directory hash of type {hash_format} found')
                     num_failed_verifications += 1
             else:
                 hash_string = hash_file_path(existing_history, file_path, hash_format, session)
-                dir_hash_context.append_file_hash(file_path, hash_string)
-        dir_content_hash = None
-        dir_structure_hash = None
-        if dir_hash_context:
-            dir_content_hash = dir_hash_context.final_content_hash_str()
-            dir_structure_hash = dir_hash_context.final_structure_hash_str()
-            dir_content_hash_mappings[folder_path] = dir_content_hash
-            dir_structure_hash_mappings[folder_path] = dir_structure_hash
+                dir_content_hash_context.append_content_hash(relative_path, hash_string)
+                dir_structure_hash_context.append_filename(item_name)
+
+        relative_path = existing_history.get_relative_file_path(folder_path)
+        dir_content_hash = dir_content_hash_context.final_content_hash_for_directory_prefix(relative_path)
+        dir_structure_hash = dir_structure_hash_context.final_structure_hash()
+        dir_structure_hash_mappings[folder_path] = dir_structure_hash
         modification_date = datetime.datetime.fromtimestamp(os.path.getmtime(folder_path))
         session.append_directory_hashes(folder_path, modification_date, hash_format, dir_content_hash, dir_structure_hash)
+
+        # compare regular directory hash
+        # check if there are directory hashes in the generations
+        history, history_relative_path = existing_history.find_history_for_path(relative_path)
+        directory_hash_entries = history.find_directory_hash_entries_for_path(history_relative_path)
+        num_successful_verifications = 0
+        found_hash_format = False
+        for directory_hash_entry in directory_hash_entries:
+            if directory_hash_entry.hash_format != hash_format:
+                continue
+            found_hash_format = True
+            num_current_successful_verifications = _compare_and_log_directory_hashes(relative_path,
+                                                                                     directory_hash_entry, dir_content_hash,
+                                                                                     dir_structure_hash)
+            if num_current_successful_verifications == 2:
+                num_successful_verifications += 1
+            if num_current_successful_verifications == 1:
+                num_failed_verifications += 1
 
         # compare root hashes, works differently
         if folder_path == root_path:
