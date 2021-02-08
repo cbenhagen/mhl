@@ -66,3 +66,25 @@ def test_directory_verify_detect_changes(fs, simple_mhl_history):
 	result = runner.invoke(mhl.commands.verify, ['-v', '-dh', '/root/'])
 	assert "ERROR: structure hash mismatch for B old xxh64: 945ecf443295ffbd, new xxh64: fa4e99472911e118 (generation 0002)" in result.output
 	assert result.exit_code == 15
+
+@freeze_time("2020-01-16 09:15:00")
+def test_directory_verify_detect_changes2(fs, simple_mhl_folder):
+
+	runner = CliRunner()
+	result = runner.invoke(mhl.commands.create, ['/root', '-v'])
+	assert result.exit_code == 0
+
+	# rename one file
+	os.rename('/root/A/A1.txt', '/root/A/A1_renamed.txt')
+	result = runner.invoke(mhl.commands.verify, ['-v', '-dh', '/root/'])
+	assert "  content hash matches for      A  xxh64: 95e230e90be29dd6 (generation 0001)\n" in result.output
+	assert "  content hash matches for      . (root folder)  xxh64: 36e824bc313f3b77 (generation 0001)\n" in result.output
+
+	# move one file up
+	os.rename('/root/A/A1_renamed.txt', '/root/A1_renamed.txt')
+	result = runner.invoke(mhl.commands.verify, ['-v', '-dh', '/root/'])
+	assert "  content hash matches for      A  xxh64: 95e230e90be29dd6 (generation 0001)\n" not in result.output
+	assert "content hash matches for      . (root folder)  xxh64: 36e824bc313f3b77 (generation 0001)\n" in result.output
+
+
+

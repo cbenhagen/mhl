@@ -349,10 +349,6 @@ def verify_directory_hash_subcommand(root_path, verbose, hash_format, ignore_lis
                 file_path = os.path.join(folder_path, item_name)
                 dir_structure_hash_context.append_subfolder_and_hash(item_name,
                                                                      dir_structure_hash_mappings.pop(file_path))
-                if not found_hash_format:
-                    logger.error(
-                        f'ERROR: verification of folder {relative_path}: No directory hash of type {hash_format} found')
-                    num_failed_verifications += 1
             else:
                 hash_string = hash_file_path(existing_history, file_path, hash_format, session)
                 dir_content_hash_context.append_content_hash(relative_path, hash_string)
@@ -395,7 +391,10 @@ def _compare_and_log_directory_hashes(relative_path, directory_hash_entry,
     num_successful_verifications = 0
     root_string = ""
     if hasattr(directory_hash_entry, "temp_is_root_folder") and directory_hash_entry.temp_is_root_folder:
-        root_string = " (root folder in child history)"
+        if relative_path == ".":
+            root_string = " (root folder)"
+        else:
+            root_string = " (root folder in child history)"
     if directory_hash_entry.hash_string == calculated_content_hash_string and \
             directory_hash_entry.structure_hash_string == calculated_structure_hash_string:
         if relative_path == ".":
