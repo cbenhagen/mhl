@@ -139,7 +139,10 @@ class DirectoryContentHashContext:
     def final_content_hash_for_directory_prefix(self, path_prefix: str):
         if path_prefix is None:
             return None
-        element_list = self.hash_strings_with_path_prefix(path_prefix)
+        if path_prefix != ".":
+            element_list = self.hash_strings_with_path_prefix(path_prefix)
+        else:
+            element_list = self.all_hash_strings()
         result_content_hash = digest_for_digest_list(element_list, self.hash_format)
         return result_content_hash
 

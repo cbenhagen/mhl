@@ -40,12 +40,17 @@ def test_create_directory_hashes(fs):
     result = CliRunner().invoke(mhl.commands.create, ['/root', '-v'])
     assert result.exit_code == 0
 
+    test_root_hash0 = '36e824bc313f3b77'
+    test_root_hash = '9d87fdf769a99034'
+    test_a_hash = '95e230e90be29dd6'
+    test_b_hash = '51fb8fb099e92821'
+
     # a directory hash for the folder A was created
     hash_list = MHLHistory.load_from_path('/root').hash_lists[0]
     assert hash_list.find_media_hash_for_path('A').is_directory
-    assert hash_list.find_media_hash_for_path('A').hash_entries[0].hash_string == '95e230e90be29dd6'
+    assert hash_list.find_media_hash_for_path('A').hash_entries[0].hash_string == test_a_hash
     # and the directory hash of the root folder is set in the header
-    assert hash_list.root_media_hash.hash_entries[0].hash_string == '36e824bc313f3b77'
+    assert hash_list.root_media_hash.hash_entries[0].hash_string == test_root_hash0
 
     # test that the directory-hash command creates the same directory hashes
     # FIXME: command doesn't exist any more, replace with tests of verify directory hashes command?
@@ -70,14 +75,14 @@ def test_create_directory_hashes(fs):
 
     hash_list = MHLHistory.load_from_path('/root').hash_lists[-1]
     # due to the additional content the directory hash of folder A and the root folder changed
-    assert hash_list.find_media_hash_for_path('A').hash_entries[0].hash_string == 'a8d0ad812ab102bd'
-    assert hash_list.root_media_hash.hash_entries[0].hash_string == 'd6b881fed0b325bd'
+    assert hash_list.find_media_hash_for_path('A').hash_entries[0].hash_string != test_a_hash
+    assert hash_list.root_media_hash.hash_entries[0].hash_string != test_root_hash0
     # empty folder all have the same directory hash
     assert hash_list.find_media_hash_for_path('emptyFolderA').hash_entries[0].hash_string == 'ef46db3751d8e999'
     assert hash_list.find_media_hash_for_path('emptyFolderB').hash_entries[0].hash_string == 'ef46db3751d8e999'
     # but since we also contain the file names in the dir hashes an empty folder that contains other empty folders
     # has a different directory structure hash
-    assert hash_list.find_media_hash_for_path('emptyFolderC').hash_entries[0].structure_hash_string == 'a5e6b8f95dfe2762'
+    assert hash_list.find_media_hash_for_path('emptyFolderC').hash_entries[0].structure_hash_string == '5cbc1f6940a3929d'
     # the content hash stays the same
     assert hash_list.find_media_hash_for_path('emptyFolderC').hash_entries[0].hash_string == 'ef46db3751d8e999'
 
@@ -96,9 +101,9 @@ def test_create_directory_hashes(fs):
     assert 'ERROR: hash mismatch for        A/A2.txt' in result.output
     hash_list = MHLHistory.load_from_path('/root').hash_lists[-1]
     # an altered file leads to a different root directory content hash
-    assert hash_list.root_media_hash.hash_entries[0].hash_string == 'cae6659fc7b34c2f'
+    assert hash_list.root_media_hash.hash_entries[0].hash_string == test_root_hash
     # structure hash stays the same
-    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == '2c99e94e8fa7d90c'
+    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == '6f49b001a901ebb2'
 
     # test that the directory-hash command creates the same root hash
     # FIXME: command doesn't exist any more, replace with tests of verify directory hashes command?
@@ -106,10 +111,10 @@ def test_create_directory_hashes(fs):
 #    assert result.exit_code == 0
 #    assert 'root hash: xxh64: adf18c910489663c' in result.output
 
-    assert hash_list.find_media_hash_for_path('B').hash_entries[0].hash_string == '51fb8fb099e92821'
+    assert hash_list.find_media_hash_for_path('B').hash_entries[0].hash_string == test_b_hash
     assert hash_list.find_media_hash_for_path('B').hash_entries[0].structure_hash_string == '945ecf443295ffbd'
-    assert hash_list.root_media_hash.hash_entries[0].hash_string == 'cae6659fc7b34c2f'
-    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == '2c99e94e8fa7d90c'
+    assert hash_list.root_media_hash.hash_entries[0].hash_string == test_root_hash
+    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == '6f49b001a901ebb2'
 
     # rename one file
     os.rename('/root/B/B1.txt', '/root/B/B2.txt')
@@ -123,12 +128,12 @@ def test_create_directory_hashes(fs):
     # the file name is part of the structure directory hash of the containing directory so it's hash changes
     assert hash_list.find_media_hash_for_path('B').hash_entries[0].structure_hash_string == 'fa4e99472911e118'
     # .. and the content hash stays the same
-    assert hash_list.find_media_hash_for_path('B').hash_entries[0].hash_string == '51fb8fb099e92821'
+    assert hash_list.find_media_hash_for_path('B').hash_entries[0].hash_string == test_b_hash
 
     # a renamed file also leads to a different root structure directory hash
-    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == 'b758c9b165fb6c2a'
+    assert hash_list.root_media_hash.hash_entries[0].structure_hash_string == '6788af0cc5a11f23'
     # and an unchanged content hash
-    assert hash_list.root_media_hash.hash_entries[0].hash_string == 'cae6659fc7b34c2f'
+    assert hash_list.root_media_hash.hash_entries[0].hash_string == test_root_hash
 
     # test that the directory-hash command creates the same root hash
     # FIXME: command doesn't exist any more, replace with tests of verify directory hashes command?
@@ -233,7 +238,7 @@ def test_create_fail_missing_file(fs, nested_mhl_histories):
 
 def test_create_nested_new_format(fs, nested_mhl_histories):
     """
-    test that ensures that hasehs in a new format are also verified in child histories
+    test that ensures that hashes in a new format are also verified in child histories
     used to verify fix of bug: https://github.com/ascmitc/mhl/issues/48
     """
 

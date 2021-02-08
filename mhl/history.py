@@ -187,6 +187,22 @@ class MHLHistory:
             dir_path = os.path.dirname(dir_path)
         return self, relative_path
 
+    def is_child_history(self, relative_path: str) -> bool:
+        child_history = self.find_history_for_path(relative_path)
+        if child_history != self:
+            return True
+        else:
+            return False
+
+    def child_history_of_history(self, relative_path: str, root_path: str) -> MHLHistory:
+        root_history = self.find_history_for_path(root_path)[0]
+        assert(root_history != None)
+        child_history = root_history.find_history_for_path(relative_path)[0]
+        if child_history.asc_mhl_path != self.asc_mhl_path and len(child_history.asc_mhl_path) > len(root_history.asc_mhl_path):
+            return child_history
+        else:
+            return None
+
     def set_of_file_paths(self) -> Set[str]:
         all_paths = set()
         for hash_list in self.hash_lists:
